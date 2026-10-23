@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RENO TRAVEL VIP | رينو ترافيل</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Routing Machine CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        softGold: '#c5a059',
+                        brandSky: '#0284c7',
+                    },
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                        montserrat: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden; /* منع السكرول تماماً */
+            font-family: 'Cairo', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .soft-gold-text {
+            color: #c5a059;
+        }
+
+        .sky-btn {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            transition: all 0.2s ease;
+        }
+        .sky-btn:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+        }
+
+        .pro-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(197, 160, 89, 0.4);
+        }
+
+        .app-container {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 1.5px solid rgba(197, 160, 89, 0.6);
+            border-radius: 1rem;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("https://up6.cc/2026/10/179277266667361.jpeg");
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            opacity: 0.40;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%; left: 0; right: 0;
+            background: #ffffff;
+            border: 1px solid #0284c7;
+            border-radius: 0.5rem;
+            max-height: 140px;
+            overflow-y: auto;
+            z-index: 999;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .search-item {
+            padding: 6px 10px;
+            font-size: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+        }
+        .search-item:hover {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .service-active-green {
+            background-color: #f0fdf4 !important;
+            border: 1.5px solid #16a34a !important;
+            color: #15803d !important;
+        }
+
+        .service-inactive {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+        }
+
+        .step-page {
+            display: none;
+            height: 100%;
+        }
+        .step-page.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        @keyframes carMove {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(3px); }
+            100% { transform: translateX(0); }
+        }
+        .animate-car { animation: carMove 1.8s ease-in-out infinite; }
+
+        @keyframes planeFly {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-3px) rotate(-3deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        .animate-plane { animation: planeFly 2s ease-in-out infinite; }
+
+        #splashScreen { transition: opacity 0.4s ease, visibility 0.4s ease; }
+        .splash-hidden { opacity: 0; visibility: hidden; }
+        .leaflet-routing-container { display: none !important; }
+
+        .star-rating i { cursor: pointer; color: #cbd5e1; transition: color 0.2s; }
+        .star-rating i.active { color: #f59e0b; }
+    </style>
+</head>
+<body class="p-1.5 sm:p-3 flex items-center justify-center">
+
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center text-center px-4">
+        <div class="w-44 h-44 sm:w-56 sm:h-56 mb-3">
+            <img src="123821.jpg" onError="this.src='https://c.top4top.io/p_3947ljouq0.jpg'" alt="Reno Travel Logo" class="w-full h-full object-contain rounded-2xl shadow-md border border-slate-200">
+        </div>
+        <h1 class="text-lg sm:text-2xl font-black text-slate-800 mb-0.5" data-ar="أهلاً وسهلاً بكم في رينو ترافيل VIP" data-en="Welcome to Reno Travel VIP">أهلاً وسهلاً بكم في رينو ترافيل VIP</h1>
+        <p class="text-[10px] text-amber-600 tracking-wider font-bold uppercase">RENO TRAVEL LIMOUSINE SERVICES</p>
+        <div class="mt-4">
+            <button onclick="dismissSplash()" class="text-xs text-slate-700 bg-slate-100 border border-slate-300 px-5 py-1.5 rounded-full hover:bg-slate-200 transition font-bold shadow-sm" data-ar="تخطي الانتظار" data-en="Skip Intro">تخطي الانتظار</button>
+        </div>
+    </div>
+
+    <!-- Main Application Box (مضبوط بالكامل لمقاس الشاشة) -->
+    <main class="w-full max-w-lg h-full max-h-[100vh] my-auto">
+        <div class="app-container pro-shadow p-3">
+            
+            <div class="app-content">
+
+                <!-- Header -->
+                <header class="border-b border-slate-200 pb-1.5 text-center bg-white/80 rounded-lg p-1.5 relative flex-shrink-0">
+                    <div class="absolute top-1.5 left-1.5">
+                        <button type="button" onclick="toggleLanguage()" id="langBtn" class="bg-sky-50 border border-sky-300 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm hover:bg-sky-100 transition flex items-center gap-1">
+                            <i class="fa-solid fa-globe text-sky-600"></i>
+                            <span id="langText">English</span>
+                        </button>
+                    </div>
+
+                    <div class="w-32 h-10 mx-auto mb-0.5 flex justify-center items-center">
+                        <img src="123821.jpg" onError="this.src='https://c.top4top.io/p_3947ljouq0.jpg'" alt="Reno Travel Logo" class="max-w-full max-h-full object-contain">
+                    </div>
+
+                    <div class="space-y-0">
+                        <h1 class="text-base font-black font-montserrat tracking-wider text-sky-700 leading-none">RENO TRAVEL</h1>
+                        <span class="text-[9px] font-bold soft-gold-text uppercase tracking-widest block">TOURISM & VIP LIMOUSINE SERVICES</span>
+                    </div>
+                </header>
+
+                <!-- شريط التقدم -->
+                <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 my-1.5 bg-white/70 rounded-lg p-1 flex-shrink-0">
+                    <div id="step-dot-1" class="flex items-center gap-1 text-[10px] font-bold text-sky-600 cursor-pointer" onclick="goToStep(1)">
+                        <span class="w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                        <span data-ar="العناوين" data-en="Route">العناوين</span>
+                    </div>
+                    <div class="flex-1 h-1 bg-slate-200 mx-1.5 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-sky-600 transition-all duration-300" style="width: 33%"></div>
+                    </div>
+                    <div id="step-dot-2" class="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer" onclick="goToStep(2)">
+                        <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">2</span>
+                        <span data-ar="السيارة والسعر" data-en="Car & Fare">السيارة والسعر</span>
+                    </div>
+                    <div class="flex-1 h-1 bg-slate-200 mx-1.5 rounded-full overflow-hidden"></div>
+                    <div id="step-dot-3" class="flex items-center gap-1 text-[10px] font-bold text-slate-500 cursor-pointer" onclick="goToStep(3)">
+                        <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">3</span>
+                        <span data-ar="التأكيد" data-en="Confirm">التأكيد</span>
+                    </div>
+                </div>
+
+                <!-- محتوى الخطوات المتغير -->
+                <div class="flex-1 overflow-hidden relative my-auto">
+                    
+                    <!-- الخطوة 1 -->
+                    <div id="step-1" class="step-page active">
+                        <div class="space-y-1.5">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="selectService('limo')" id="btn-limo" class="service-active-green p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                    <img src="124970.webp" onError="this.src='https://cdn-icons-png.flaticon.com/512/744/744465.png'" alt="Limousine" class="w-7 h-4 object-contain animate-car">
+                                    <span data-ar="حجز ليموزين" data-en="Book Limousine">حجز ليموزين</span>
+                                </button>
+
+                                <button type="button" onclick="selectService('pickup')" id="btn-pickup" class="service-inactive p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                    <i class="fa-solid fa-plane-arrival text-xs text-amber-600 animate-plane"></i>
+                                    <span data-ar="استقبال المطار VIP" data-en="VIP Airport Pickup">استقبال المطار VIP</span>
+                                </button>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <div class="relative">
+                                    <div class="flex items-center justify-between mb-0.5">
+                                        <label class="text-[10px] font-bold text-slate-800" data-ar="نقطة الانطلاق (من):" data-en="From:">نقطة الانطلاق (من):</label>
+                                        <button type="button" onclick="getCurrentLocation()" class="text-[9px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
+                                            <i class="fa-solid fa-crosshairs"></i> <span data-ar="موقعي الحالي" data-en="Current GPS">موقعي الحالي</span>
+                                        </button>
+                                    </div>
+                                    <input type="text" id="originInput" oninput="searchPlaces('origin')" placeholder="اكتب المكان (مثال: الهرم، مطار سفنكس...)" autocomplete="off" class="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] text-slate-800 focus:border-sky-500 focus:outline-none font-bold">
+                                    <div id="originDropdown" class="search-dropdown hidden"></div>
+                                </div>
+
+                                <div class="relative">
+                                    <label class="text-[10px] font-bold text-slate-800 mb-0.5 block" data-ar="وجهة الوصول (إلى):" data-en="To:">وجهة الوصول (إلى):</label>
+                                    <input type="text" id="destinationInput" oninput="searchPlaces('destination')" placeholder="اكتب المكان (مثال: مطار القاهرة صالة 3...)" autocomplete="off" class="w-full bg-white border-1.5 border-sky-500 rounded-md px-2 py-1 text-[11px] text-slate-800 focus:border-sky-600 focus:outline-none font-bold">
+                                    <div id="destDropdown" class="search-dropdown hidden"></div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-800 mb-0.5 block" data-ar="التاريخ:" data-en="Date:">التاريخ:</label>
+                                    <input type="date" id="date" class="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[10px] font-bold text-slate-800 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-800 mb-0.5 block" data-ar="الوقت:" data-en="Time:">الوقت:</label>
+                                    <input type="time" id="time" class="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[10px] font-bold text-slate-800 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <div class="space-y-0.5">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-[10px] font-bold text-slate-800" data-ar="خريطة المسار المباشر:" data-en="Live Route Map:">خريطة المسار المباشر:</label>
+                                    <span id="distanceBadge" class="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">المسافة: 0 كم</span>
+                                </div>
+                                <div id="leafletMap" class="w-full h-32 sm:h-36 rounded-lg border border-slate-300 shadow-sm relative z-10"></div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="goToStep(2)" class="w-full sky-btn py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow mt-1">
+                            <span data-ar="متابعة لاختيار السيارة والسعر ⬅️" data-en="Next: Select Car ➡️">متابعة لاختيار السيارة والسعر ⬅️</span>
+                        </button>
+                    </div>
+
+                    <!-- الخطوة 2 -->
+                    <div id="step-2" class="step-page">
+                        <div class="space-y-2">
+                            <div class="bg-white/90 p-2 rounded-lg border border-sky-200 shadow-sm">
+                                <div class="text-[10px] font-bold text-sky-900 mb-0.5"><i class="fa-solid fa-route text-sky-600"></i> <span data-ar="ملخص الرحلة:" data-en="Route Details:">ملخص الرحلة:</span></div>
+                                <div id="routeSummaryText" class="text-[11px] font-bold text-slate-700">-- إلى --</div>
+                                <div id="timeSummaryText" class="text-[10px] font-bold text-sky-800 mt-0.5">الموعد: --</div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-800 mb-1 block" data-ar="اختر نوع السيارة:" data-en="Vehicle Type:">اختر نوع السيارة:</label>
+                                <select id="passengerCount" onchange="calculateFare()" class="w-full bg-white border-1.5 border-sky-500 rounded-md px-2 py-1.5 text-[11px] text-slate-800 focus:outline-none font-bold">
+                                    <option value="1" data-ar="🚗 سيارة سيدان ملاكي (1 - 4 أفراد)" data-en="🚗 Sedan Car (1 - 4 Passengers)">🚗 سيارة سيدان ملاكي (1 - 4 أفراد)</option>
+                                    <option value="5" data-ar="🚙 سيارة عائلية SUV (5 - 7 أفراد)" data-en="🚙 Family SUV (5 - 7 Passengers)">🚙 سيارة عائلية SUV (5 - 7 أفراد)</option>
+                                    <option value="8" data-ar="🚐 سيارة هاي إيس / فان (8 أفراد فأكثر)" data-en="🚐 HiAce Van (8+ Passengers)">🚐 سيارة هاي إيس / فان (8 أفراد فأكثر)</option>
+                                </select>
+                            </div>
+
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 text-center shadow-sm">
+                                <span class="text-[10px] text-slate-500 font-bold block" data-ar="السعر الإجمالي للرحلة:" data-en="Total Trip Fare:">السعر الإجمالي للرحلة:</span>
+                                <span id="priceDisplay" class="text-xl font-black text-emerald-700">0 ج.م</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <button type="button" onclick="goToStep(1)" class="bg-white text-slate-700 border border-slate-300 py-2 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <span data-ar="تعديل العناوين" data-en="Edit Route">تعديل العناوين</span>
+                            </button>
+                            <button type="button" onclick="goToStep(3)" class="sky-btn py-2 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1">
+                                <span data-ar="تأكيد الحجز ⬅️" data-en="Confirm ➡️">تأكيد الحجز ⬅️</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- الخطوة 3 (التأكيد والدفع مع كارت تقييمات العملاء المصغر والمدمج) -->
+                    <div id="step-3" class="step-page">
+                        <div class="space-y-2">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-800 mb-0.5 block" data-ar="طريقة الدفع:" data-en="Payment Method:">طريقة الدفع:</label>
+                                <select id="paymentMethod" onchange="togglePaymentDetails()" class="w-full bg-white border border-slate-300 rounded-md p-1.5 text-[11px] font-bold text-slate-800 focus:outline-none">
+                                    <option value="كاش عند الوصول / للكابتن" data-ar="💵 كاش (عند الوصول / للكابتن)" data-en="💵 Cash on Arrival">💵 كاش (عند الوصول / للكابتن)</option>
+                                    <option value="فودافون كاش / إنستا باي (InstaPay)" data-ar="📱 فودافون كاش / إنستا باي (InstaPay)" data-en="📱 Vodafone Cash / InstaPay">📱 فودافون كاش / إنستا باي (InstaPay)</option>
+                                    <option value="بطاقة بنكية / فيزا" data-ar="💳 بطاقة بنكية / فيزا" data-en="💳 Credit Card / Visa">💳 بطاقة بنكية / فيزا</option>
+                                </select>
+                            </div>
+
+                            <div id="digitalPaymentInfo" class="hidden bg-white p-2 rounded-md border border-slate-200 space-y-1 text-[10px]">
+                                <div class="flex items-center justify-between font-bold text-slate-700 bg-slate-50 p-1 rounded">
+                                    <span>إنستا باي (InstaPay):</span>
+                                    <span class="font-black text-purple-700 select-all">01226662864</span>
+                                </div>
+                                <div class="flex items-center justify-between font-bold text-slate-700 bg-slate-50 p-1 rounded">
+                                    <span>فودافون كاش:</span>
+                                    <span class="font-black text-red-600 select-all">01116664133</span>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="submitBooking()" class="w-full sky-btn py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shadow">
+                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                                <span data-ar="تأكيد الحجز المباشر عبر الواتساب" data-en="Confirm via WhatsApp">تأكيد الحجز المباشر عبر الواتساب</span>
+                            </button>
+
+                            <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+                                <button type="button" onclick="goToStep(2)" class="bg-white text-slate-700 border border-slate-300 py-1 rounded-md font-bold text-[10px] flex items-center justify-center gap-1">
+                                    <span data-ar="تعديل السيارة" data-en="Edit Car">تعديل السيارة</span>
+                                </button>
+                                <button type="button" onclick="goToStep(1)" class="bg-white text-slate-700 border border-slate-300 py-1 rounded-md font-bold text-[10px] flex items-center justify-center gap-1">
+                                    <span data-ar="تعديل العناوين" data-en="Edit Route">تعديل العناوين</span>
+                                </button>
+                            </div>
+
+                            <!-- كارت التقييمات المصغر والمدمج في أسفل الخطوة 3 -->
+                            <div class="bg-white/95 border border-slate-200 rounded-lg p-2 shadow-sm space-y-1.5 text-[10px] mt-1">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-1">
+                                    <a href="#download-apk" onclick="downloadAppAPK(event)" class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                        <i class="fa-solid fa-download"></i> <span data-ar="تحميل التطبيق APK" data-en="Download APK">تحميل التطبيق APK</span>
+                                    </a>
+                                    <span class="text-[9px] font-bold text-slate-500" data-ar="⭐ 2,740 تقييم عملاء" data-en="⭐ 2,740 Reviews">⭐ 2,740 تقييم عملاء</span>
+                                </div>
+
+                                <div id="reviewsList" class="space-y-1 max-h-20 overflow-y-auto">
+                                    <div class="bg-slate-50 p-1 rounded text-[9px]">
+                                        <div class="flex justify-between font-bold text-slate-800">
+                                            <span>أحمد مرسي (عميل - استقبال مطار)</span>
+                                            <span class="text-amber-500">★★★★★</span>
+                                        </div>
+                                        <p class="text-slate-600">خدمة ممتازة جداً والسائق كان في انتظارنا بالموعد تماماً.</p>
+                                    </div>
+                                    <div class="bg-slate-50 p-1 rounded text-[9px]">
+                                        <div class="flex justify-between font-bold text-slate-800">
+                                            <span>David Miller (UK - Tourism)</span>
+                                            <span class="text-amber-500">★★★★★</span>
+                                        </div>
+                                        <p class="text-slate-600">Wonderful Pyramids tour and very clean air-conditioned car.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentLang = 'ar';
+        let currentStep = 1;
+        let calculatedPriceValue = 0;
+        let calculatedDistanceValue = 0;
+        let selectedServiceType = 'limo';
+        let searchTimer;
+
+        let map, routingControl;
+        let originCoords = null;
+        let destCoords = null;
+
+        const presetLocations = [
+            { name: "مطار القاهرة الدولي - صالة 1", lat: 30.1118, lon: 31.3990 },
+            { name: "مطار القاهرة الدولي - صالة 2", lat: 30.1085, lon: 31.4087 },
+            { name: "مطار القاهرة الدولي - صالة 3", lat: 30.1065, lon: 31.4131 },
+            { name: "مطار سفنكس الدولي", lat: 30.1094, lon: 30.9028 },
+            { name: "منطقة الأهرامات الأثرية", lat: 29.9792, lon: 31.1342 },
+            { name: "المتحف المصري الكبير", lat: 29.9946, lon: 31.1152 }
+        ];
+
+        window.onload = function() {
+            map = L.map('leafletMap', { zoomControl: false }).setView([30.0444, 31.2357], 8);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18
+            }).addTo(map);
+
+            document.getElementById('distanceBadge').innerText = currentLang === 'ar' ? "المسافة: 0 كم" : "Distance: 0 km";
+        };
+
+        function downloadAppAPK(e) {
+            e.preventDefault();
+            const apkFileUrl = "https://example.com/renotravel.apk"; 
+            if (confirm(currentLang === 'ar' ? "هل تريد بدء تحميل تطبيق رينو ترافيل (APK)؟" : "Download Reno Travel APK?")) {
+                let tempLink = document.createElement('a');
+                tempLink.href = apkFileUrl;
+                tempLink.setAttribute('download', 'RenoTravel.apk');
+                document.body.appendChild(tempLink);
+                document.body.removeChild(tempLink);
+                alert(currentLang === 'ar' ? "تم بدء التحميل!" : "Download started!");
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            const root = document.getElementById('htmlRoot');
+            root.setAttribute('lang', currentLang);
+            root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+
+            document.getElementById('langText').innerText = currentLang === 'ar' ? 'English' : 'العربية';
+
+            const elements = document.querySelectorAll('[data-ar]');
+            for(let i=0; i<elements.length; i++) {
+                const el = elements[i];
+                el.innerText = el.getAttribute('data-' + currentLang);
+            }
+        }
+
+        function selectService(type) {
+            selectedServiceType = type;
+            const btnLimo = document.getElementById('btn-limo');
+            const btnPickup = document.getElementById('btn-pickup');
+
+            if (type === 'limo') {
+                btnLimo.className = "service-active-green p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+                btnPickup.className = "service-inactive p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+            } else {
+                btnPickup.className = "service-active-green p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+                btnLimo.className = "service-inactive p-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 shadow-sm";
+            }
+            calculateFare();
+        }
+
+        function togglePaymentDetails() {
+            const method = document.getElementById('paymentMethod').value;
+            const infoDiv = document.getElementById('digitalPaymentInfo');
+            if (method.includes('فودافون كاش') || method.includes('إنستا باي')) {
+                infoDiv.classList.remove('hidden');
+            } else {
+                infoDiv.classList.add('hidden');
+            }
+        }
+
+        function updateMapRoute() {
+            if (!map || !originCoords || !destCoords) return;
+            if (routingControl) map.removeControl(routingControl);
+
+            routingControl = L.Routing.control({
+                waypoints: [originCoords, destCoords],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false,
+                lineOptions: { styles: [{ color: '#0284c7', weight: 4 }] }
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                const summary = e.routes[0].summary;
+                calculatedDistanceValue = Math.round(summary.totalDistance / 1000);
+                document.getElementById('distanceBadge').innerText = currentLang === 'ar' ? ("المسافة: " + calculatedDistanceValue + " كم") : ("Distance: " + calculatedDistanceValue + " km");
+                calculateFare();
+            });
+        }
+
+        function searchPlaces(type) {
+            const inputId = type === 'origin' ? 'originInput' : 'destinationInput';
+            const dropdownId = type === 'origin' ? 'originDropdown' : 'destDropdown';
+            const query = document.getElementById(inputId).value.trim().toLowerCase();
+            const dropdown = document.getElementById(dropdownId);
+
+            clearTimeout(searchTimer);
+            if (query.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const matchedPresets = presetLocations.filter(item => item.name.toLowerCase().includes(query));
+
+            searchTimer = setTimeout(function() {
+                const url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(query + " Egypt") + "&countrycodes=eg&limit=5&accept-language=ar";
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        dropdown.innerHTML = "";
+                        let allResults = [...matchedPresets];
+                        for(let i=0; i<data.length; i++) {
+                            if(!allResults.some(p => p.name === data[i].display_name)) {
+                                allResults.push({ name: data[i].display_name, lat: parseFloat(data[i].lat), lon: parseFloat(data[i].lon) });
+                            }
+                        }
+                        if (allResults.length === 0) { dropdown.classList.add('hidden'); return; }
+
+                        for (let i = 0; i < allResults.length; i++) {
+                            const item = allResults[i];
+                            const div = document.createElement('div');
+                            div.className = "search-item";
+                            div.innerHTML = `<i class="fa-solid fa-location-dot text-sky-600 ml-1"></i> ${item.name}`;
+                            div.onclick = function() {
+                                document.getElementById(inputId).value = item.name;
+                                dropdown.classList.add('hidden');
+                                if (type === 'origin') originCoords = L.latLng(item.lat, item.lon);
+                                else destCoords = L.latLng(item.lat, item.lon);
+                                updateMapRoute();
+                            };
+                            dropdown.appendChild(div);
+                        }
+                        dropdown.classList.remove('hidden');
+                    })
+                    .catch(() => dropdown.classList.add('hidden'));
+            }, 200);
+        }
+
+        function getCurrentLocation() {
+            const originInput = document.getElementById('originInput');
+            if (!navigator.geolocation) return;
+
+            originInput.value = currentLang === 'ar' ? "جاري التحديد..." : "Locating...";
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                originCoords = L.latLng(lat, lon);
+
+                fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lon + "&accept-language=ar")
+                    .then(res => res.json())
+                    .then(data => {
+                        originInput.value = (data && data.display_name) ? data.display_name : "موقعي الحالي (GPS)";
+                        updateMapRoute();
+                    })
+                    .catch(() => {
+                        originInput.value = "موقعي الحالي (GPS)";
+                        updateMapRoute();
+                    });
+            }, function() {
+                originInput.value = "";
+                alert(currentLang === 'ar' ? "تعذر تحديد موقعك." : "GPS failed.");
+            });
+        }
+
+        function calculateFare() {
+            const distance = calculatedDistanceValue;
+            const selection = parseInt(document.getElementById('passengerCount').value) || 1;
+            if (distance === 0) {
+                calculatedPriceValue = 0;
+                document.getElementById('priceDisplay').innerText = currentLang === 'ar' ? "0 ج.م" : "0 EGP";
+                return;
+            }
+
+            let rate = 27;
+            if (selection === 5) rate = 35;
+            else if (selection >= 8) rate = 50;
+
+            if (selectedServiceType === 'pickup') rate += 5;
+
+            calculatedPriceValue = Math.round(distance * rate);
+            document.getElementById('priceDisplay').innerText = calculatedPriceValue + (currentLang === 'ar' ? " ج.م" : " EGP");
+        }
+
+        function goToStep(step) {
+            const origin = document.getElementById('originInput').value.trim();
+            const dest = document.getElementById('destinationInput').value.trim();
+            const date = document.getElementById('date').value.trim();
+            const time = document.getElementById('time').value.trim();
+
+            if (step === 2) {
+                if (!origin || !dest) {
+                    alert(currentLang === 'ar' ? "يرجى أدخل نقطة الانطلاق والوصول!" : "Please enter route!");
+                    return;
+                }
+                if (!date || !time) {
+                    alert(currentLang === 'ar' ? "اختر التاريخ والساعة أولاً!" : "Select date & time!");
+                    return;
+                }
+                document.getElementById('routeSummaryText').innerText = origin + " ⬅️ " + dest;
+                document.getElementById('timeSummaryText').innerText = "📅 " + date + " | ⏰ " + time;
+                calculateFare();
+            }
+
+            const pages = document.querySelectorAll('.step-page');
+            for (let i = 0; i < pages.length; i++) pages[i].classList.remove('active');
+            
+            document.getElementById('step-' + step).classList.add('active');
+            currentStep = step;
+            updateProgressBar();
+
+            if (step === 1 && map) {
+                setTimeout(() => map.invalidateSize(), 150);
+            }
+        }
+
+        function updateProgressBar() {
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = currentStep === 1 ? '33%' : (currentStep === 2 ? '66%' : '100%');
+
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById('step-dot-' + i);
+                if (i <= currentStep) {
+                    dot.className = "flex items-center gap-1 text-[10px] font-bold text-sky-600 cursor-pointer";
+                    dot.children[0].className = "w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center text-[10px] font-bold";
+                } else {
+                    dot.className = "flex items-center gap-1 text-[10px] font-bold text-slate-400 cursor-pointer";
+                    dot.children[0].className = "w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold";
+                }
+            }
+        }
+
+        function dismissSplash() {
+            document.getElementById('splashScreen').classList.add('splash-hidden');
+        }
+        setTimeout(dismissSplash, 2500);
+
+        function submitBooking() {
+            const origin = document.getElementById('originInput').value.trim() || "غير محدد";
+            const destination = document.getElementById('destinationInput').value.trim() || "غير محدد";
+            const date = document.getElementById('date').value || 'غير محدد';
+            const time = document.getElementById('time').value || 'غير محدد';
+            
+            if (date === 'غير محدد' || time === 'غير محدد') {
+                alert(currentLang === 'ar' ? "يرجى أدخل تاريخ وساعة الرحلة!" : "Enter date and time!");
+                return;
+            }
+
+            const vehicleSelect = document.getElementById('passengerCount');
+            const vehicle = vehicleSelect.options[vehicleSelect.selectedIndex].text;
+            const priceText = calculatedPriceValue + (currentLang === 'ar' ? " ج.م" : " EGP");
+            let payment = document.getElementById('paymentMethod').value;
+            const phone = "201226662864";
+            
+            const serviceTitle = selectedServiceType === 'limo' ? 'حجز ليموزين' : 'استقبال مطار VIP';
+
+            if (payment.includes('فودافون كاش') || payment.includes('إنستا باي')) {
+                payment += "\n  • InstaPay: 01226662864\n  • Vodafone Cash: 01116664133";
+            }
+
+            const message = "طلب حجز ليموزين VIP عبر RENO TRAVEL:\n" +
+                            "- الخدمة: " + serviceTitle + "\n" +
+                            "- من: " + origin + "\n" +
+                            "- إلى: " + destination + "\n" +
+                            "- المسافة المحسوبة: " + calculatedDistanceValue + " كم\n" +
+                            "- نوع السيارة: " + vehicle + "\n" +
+                            "- السعر الإجمالي: " + priceText + "\n" +
+                            "- التاريخ والوقت: " + date + " | " + time + "\n" +
+                            "- طريقة الدفع: " + payment;
+
+            window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), '_blank');
+        }
+    </script>
+</body>
+</html>
